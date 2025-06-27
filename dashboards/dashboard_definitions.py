@@ -68,25 +68,37 @@ class DashboardManager:
         if not dashboard_info:
             return None
         
-        # Aquí generamos el dashboard específico
-        if dashboard_id == 1:
-            return self.dashboard_total_estudiantes(filters)
-        elif dashboard_id == 2:
-            return self.dashboard_estudiantes_por_carrera(filters)
-        elif dashboard_id == 3:
-            return self.dashboard_estudiantes_por_genero(filters)
-        elif dashboard_id == 11:
-            return self.dashboard_promedios_por_carrera(filters)
-        elif dashboard_id == 21:
-            return self.dashboard_estudiantes_riesgo(filters)
-        # ... más dashboards
+        # Mapeo de dashboards
+        dashboard_methods = {
+            1: self.dashboard_total_estudiantes,
+            2: self.dashboard_estudiantes_por_carrera,
+            3: self.dashboard_estudiantes_por_genero,
+            4: self.dashboard_estudiantes_por_edad,
+            5: self.dashboard_estudiantes_por_estado,
+            6: self.dashboard_activos_inactivos,
+            7: self.dashboard_estudiantes_beca,
+            8: self.dashboard_tipo_escuela,
+            9: self.dashboard_evolución_inscripciones,
+            10: self.dashboard_estudiantes_periodo,
+            11: self.dashboard_promedios_por_carrera,
+            12: self.dashboard_materias_reprobadas,
+            13: self.dashboard_calificaciones_cuatrimestre,
+            21: self.dashboard_estudiantes_riesgo,
+            23: self.dashboard_abandono_escolar,
+            26: self.dashboard_pagos_periodo,
+            31: self.dashboard_egresados_año,
+            36: self.dashboard_uso_recursos
+        }
+        
+        if dashboard_id in dashboard_methods:
+            return dashboard_methods[dashboard_id](filters)
         else:
             return self.dashboard_placeholder(dashboard_info)
     
     def dashboard_total_estudiantes(self, filters=None):
         data = self.db.get_estudiantes_stats()
         if not data:
-            return {"error": "No se pudieron obtener los datos"}
+            return {"error": "No se pudieron obtener los datos de estudiantes"}
         
         stats = data[0]
         
@@ -115,7 +127,7 @@ class DashboardManager:
         
         fig.add_trace(go.Indicator(
             mode = "number",
-            value = round(stats['edad_promedio'], 1),
+            value = round(float(stats['edad_promedio']) if stats['edad_promedio'] else 0, 1),
             title = {"text": "Edad Promedio"},
             domain = {'x': [0.75, 1], 'y': [0, 1]}
         ))
@@ -130,7 +142,7 @@ class DashboardManager:
     def dashboard_estudiantes_por_carrera(self, filters=None):
         data = self.db.get_carreras_stats()
         if not data:
-            return {"error": "No se pudieron obtener los datos"}
+            return {"error": "No se pudieron obtener los datos de carreras"}
         
         df = pd.DataFrame(data)
         
@@ -152,18 +164,10 @@ class DashboardManager:
         }
     
     def dashboard_estudiantes_por_genero(self, filters=None):
-        query = """
-        SELECT 
-            genero,
-            COUNT(*) as cantidad
-        FROM estudiantes
-        WHERE activo = 1
-        GROUP BY genero
-        """
-        data = self.db.execute_query(query)
+        data = self.db.get_genero_stats()
         
         if not data:
-            return {"error": "No se pudieron obtener los datos"}
+            return {"error": "No se pudieron obtener los datos de género"}
         
         df = pd.DataFrame(data)
         
@@ -181,32 +185,180 @@ class DashboardManager:
             "data": data
         }
     
-    def dashboard_promedios_por_carrera(self, filters=None):
+    def dashboard_estudiantes_por_edad(self, filters=None):
+        data = self.db.get_estudiantes_por_edad()
+        
+        if not data:
+            return {"error": "No se pudieron obtener los datos de edad"}
+        
+        df = pd.DataFrame(data)
+        
+        fig = px.bar(
+            df,
+            x='rango_edad',
+            y='cantidad',
+            title='Distribución por Rangos de Edad',
+            color='cantidad',
+            color_continuous_scale='Blues'
+        )
+        fig.update_layout(height=400)
+        
+        return {
+            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "data": data
+        }
+    
+    def dashboard_estudiantes_por_estado(self, filters=None):
+        data = self.db.get_estudiantes_por_estado()
+        
+        if not data:
+            return {"error": "No se pudieron obtener los datos por estado"}
+        
+        df = pd.DataFrame(data)
+        
+        fig = px.bar(
+            df,
+            y='estado',
+            x='cantidad',
+            orientation='h',
+            title='Estudiantes por Estado (Top 10)',
+            color='cantidad',
+            color_continuous_scale='Viridis'
+        )
+        fig.update_layout(height=500)
+        
+        return {
+            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "data": data
+        }
+    
+    def dashboard_activos_inactivos(self, filters=None):
+        # Consulta directa para activos/inactivos
         query = """
         SELECT 
-            c.nombre as carrera,
-            AVG(cal.calificacion_final) as promedio
-        FROM calificaciones cal
-        JOIN estudiantes e ON cal.id_estudiante = e.id
-        JOIN carreras c ON e.carrera_codigo = c.codigo
-        WHERE cal.calificacion_final IS NOT NULL
-        GROUP BY c.nombre
-        ORDER BY promedio DESC
+            CASE WHEN activo = 1 THEN 'Activos' ELSE 'Inactivos' END as estado,
+            COUNT(*) as cantidad
+        FROM estudiantes
+        GROUP BY activo
         """
         data = self.db.execute_query(query)
         
         if not data:
-            return {"error": "No se pudieron obtener los datos"}
+            return {"error": "No se pudieron obtener los datos de estado"}
         
         df = pd.DataFrame(data)
         
-        # AQUI SE ARREGLA EL ERROR: Convierte la columna 'promedio' a tipo numérico
-        # 'errors='coerce'' convertirá cualquier valor que no sea un número en NaN (Not a Number)
-        df['promedio'] = pd.to_numeric(df['promedio'], errors='coerce')
+        fig = px.pie(
+            df,
+            values='cantidad',
+            names='estado',
+            title='Estudiantes Activos vs Inactivos',
+            color_discrete_map={'Activos': 'green', 'Inactivos': 'red'}
+        )
+        fig.update_layout(height=400)
         
-        # Opcional: Si quieres eliminar filas donde 'promedio' se convirtió a NaN
-        # df.dropna(subset=['promedio'], inplace=True)
-
+        return {
+            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "data": data
+        }
+    
+    def dashboard_estudiantes_beca(self, filters=None):
+        data = self.db.get_becas_stats()
+        
+        if not data:
+            return {"error": "No se pudieron obtener los datos de becas"}
+        
+        df = pd.DataFrame(data)
+        
+        fig = px.pie(
+            df,
+            values='cantidad',
+            names='estado_beca',
+            title='Estudiantes con y sin Beca'
+        )
+        fig.update_layout(height=400)
+        
+        return {
+            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "data": data
+        }
+    
+    def dashboard_tipo_escuela(self, filters=None):
+        data = self.db.get_tipo_escuela_stats()
+        
+        if not data:
+            return {"error": "No se pudieron obtener los datos de tipo de escuela"}
+        
+        df = pd.DataFrame(data)
+        
+        fig = px.bar(
+            df,
+            x='tipo_escuela',
+            y='cantidad',
+            title='Estudiantes por Tipo de Escuela de Origen',
+            color='tipo_escuela'
+        )
+        fig.update_layout(height=400)
+        
+        return {
+            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "data": data
+        }
+    
+    def dashboard_evolución_inscripciones(self, filters=None):
+        data = self.db.get_inscripciones_por_periodo()
+        
+        if not data:
+            return {"error": "No se pudieron obtener los datos de inscripciones"}
+        
+        df = pd.DataFrame(data)
+        
+        fig = px.line(
+            df,
+            x='periodo',
+            y='cantidad',
+            title='Evolución de Inscripciones por Período',
+            markers=True
+        )
+        fig.update_layout(height=400)
+        
+        return {
+            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "data": data
+        }
+    
+    def dashboard_estudiantes_periodo(self, filters=None):
+        data = self.db.get_inscripciones_por_periodo()
+        
+        if not data:
+            return {"error": "No se pudieron obtener los datos por período"}
+        
+        df = pd.DataFrame(data)
+        
+        fig = px.bar(
+            df,
+            x='periodo',
+            y='cantidad',
+            title='Estudiantes por Período de Ingreso'
+        )
+        fig.update_xaxis(tickangle=45)
+        fig.update_layout(height=400)
+        
+        return {
+            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "data": data
+        }
+    
+    def dashboard_promedios_por_carrera(self, filters=None):
+        data = self.db.get_promedios_carrera()
+        
+        if not data:
+            return {"error": "No se pudieron obtener los datos de promedios"}
+        
+        df = pd.DataFrame(data)
+        
+        # Convertir promedio a numérico
+        df['promedio'] = pd.to_numeric(df['promedio'], errors='coerce')
         df['promedio'] = df['promedio'].round(2)
         
         # Gráfico de barras horizontales
@@ -226,11 +378,58 @@ class DashboardManager:
             "data": data
         }
     
+    def dashboard_materias_reprobadas(self, filters=None):
+        data = self.db.get_materias_reprobadas()
+        
+        if not data:
+            return {"error": "No se pudieron obtener los datos de materias reprobadas"}
+        
+        df = pd.DataFrame(data)
+        
+        fig = px.bar(
+            df,
+            y='materia',
+            x='reprobados',
+            orientation='h',
+            title='Materias más Reprobadas (Top 10)',
+            color='reprobados',
+            color_continuous_scale='Reds'
+        )
+        fig.update_layout(height=500)
+        
+        return {
+            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "data": data
+        }
+    
+    def dashboard_calificaciones_cuatrimestre(self, filters=None):
+        data = self.db.get_calificaciones_por_cuatrimestre()
+        
+        if not data:
+            return {"error": "No se pudieron obtener los datos de calificaciones por cuatrimestre"}
+        
+        df = pd.DataFrame(data)
+        df['promedio'] = pd.to_numeric(df['promedio'], errors='coerce')
+        
+        fig = px.line(
+            df,
+            x='cuatrimestre',
+            y='promedio',
+            title='Promedio de Calificaciones por Cuatrimestre',
+            markers=True
+        )
+        fig.update_layout(height=400)
+        
+        return {
+            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "data": data
+        }
+    
     def dashboard_estudiantes_riesgo(self, filters=None):
         data = self.db.get_riesgo_academico_stats()
         
         if not data:
-            return {"error": "No se pudieron obtener los datos"}
+            return {"error": "No se pudieron obtener los datos de riesgo académico"}
         
         df = pd.DataFrame(data)
         
@@ -251,22 +450,12 @@ class DashboardManager:
             "data": data
         }
     
-    def dashboard_placeholder(self, dashboard_info):
-        # Dashboard temporal para los que no están implementados
-        fig = go.Figure()
-        fig.add_annotation(
-            text=f"Dashboard en construcción<br>{dashboard_info['name']}",
-            xref="paper", yref="paper",
-            x=0.5, y=0.5, xanchor='center', yanchor='middle',
-            showarrow=False,
-            font=dict(size=20)
-        )
-        fig.update_layout(
-            height=400,
-            title=dashboard_info['name']
-        )
+    def dashboard_abandono_escolar(self, filters=None):
+        data = self.db.get_abandono_stats()
         
-        return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
-            "data": {"message": "Dashboard en desarrollo"}
-        }
+        if not data:
+            return {"error": "No se pudieron obtener los datos de abandono"}
+        
+        df = pd.DataFrame(data)
+        
+        fig = px

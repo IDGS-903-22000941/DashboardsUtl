@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio - Dashboards UTL{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tachometer-alt"></i> Panel de Control - UTL
+        </h1>
+        
+        <!-- Barra de búsqueda y filtros -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" class="form-control" id="searchInput" 
+                                   placeholder="Buscar dashboard...">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="categoryFilter">
+                            <option value="">Todas las categorías</option>
+                            {% for category in categories %}
+                            <option value="{{ category }}">{{ category }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-secondary w-100" id="clearFilters">
+                            <i class="fas fa-times"></i> Limpiar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grid de dashboards -->
+        <div class="row" id="dashboardGrid">
+            {% for dashboard in dashboards %}
+            <div class="col-lg-3 col-md-4 col-sm-6 mb-4 dashboard-card" 
+                 data-category="{{ dashboard.category }}" 
+                 data-name="{{ dashboard.name.lower() }}"
+                 data-description="{{ dashboard.description.lower() }}">
+                <div class="card h-100 shadow-sm dashboard-item">
+                    <div class="card-header bg-{{ 'primary' if dashboard.category == 'Estudiantes' 
+                                                 else 'success' if dashboard.category == 'Académico'
+                                                 else 'warning' if dashboard.category == 'Riesgo'
+                                                 else 'info' if dashboard.category == 'Financiero'
+                                                 else 'secondary' if dashboard.category == 'Egresados'
+                                                 else 'dark' }} text-white">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-{{ 'users' if dashboard.category == 'Estudiantes'
+                                              else 'graduation-cap' if dashboard.category == 'Académico'
+                                              else 'exclamation-triangle' if dashboard.category == 'Riesgo'
+                                              else 'dollar-sign' if dashboard.category == 'Financiero'
+                                              else 'user-graduate' if dashboard.category == 'Egresados'
+                                              else 'cogs' }}"></i>
+                            {{ dashboard.category }}
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ dashboard.name }}</h5>
+                        <p class="card-text text-muted">{{ dashboard.description }}</p>
+                    </div>
+                    <div class="card-footer">
+                        <a href="{{ url_for('dashboard', dashboard_id=dashboard.id) }}" 
+                           class="btn btn-primary w-100">
+                            <i class="fas fa-eye"></i> Ver Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Mensaje cuando no hay resultados -->
+        <div class="alert alert-info d-none" id="noResults">
+            <i class="fas fa-info-circle"></i> No se encontraron dashboards que coincidan con tu búsqueda.
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const clearFilters = document.getElementById('clearFilters');
+    const dashboardCards = document.querySelectorAll('.dashboard-card');
+    const noResults = document.getElementById('noResults');
+
+    function filterDashboards() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedCategory = categoryFilter.value;
+        let visibleCount = 0;
+
+        dashboardCards.forEach(card => {
+            const cardCategory = card.getAttribute('data-category');
+            const cardName = card.getAttribute('data-name');
+            const cardDescription = card.getAttribute('data-description');
+            
+            const matchesSearch = !searchTerm || 
+                                 cardName.includes(searchTerm) || 
+                                 cardDescription.includes(searchTerm);
+            const matchesCategory = !selectedCategory || cardCategory === selectedCategory;
+            
+            if (matchesSearch && matchesCategory) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        // Mostrar mensaje si no hay resultados
+        if (visibleCount === 0) {
+            noResults.classList.remove('d-none');
+        } else {
+            noResults.classList.add('d-none');
+        }
+    }
+
+    // Event listeners
+    searchInput.addEventListener('input', filterDashboards);
+    categoryFilter.addEventListener('change', filterDashboards);
+    
+    clearFilters.addEventListener('click', function() {
+        searchInput.value = '';
+        categoryFilter.value = '';
+        filterDashboards();
+    });
+});
+</script>
+{% endblock %} 

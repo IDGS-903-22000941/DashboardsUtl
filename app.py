@@ -13,12 +13,6 @@ dashboard_manager = DashboardManager(db)
 
 @app.route('/')
 def index():
-    dashboards = dashboard_manager.dashboards
-    categories = list(set([d['category'] for d in dashboards]))
-    return render_template('index.html', dashboards=dashboards, categories=categories)
-
-@app.route('/dashboard/<int:dashboard_id>')
-def dashboard(dashboard_id):
     # Obtener filtros de la URL
     filters = {}
     if request.args.get('carrera'):
@@ -28,36 +22,22 @@ def dashboard(dashboard_id):
     if request.args.get('genero'):
         filters['genero'] = request.args.get('genero')
     
-    # Generar dashboard
-    dashboard_data = dashboard_manager.generate_dashboard(dashboard_id, filters)
-    dashboard_info = next((d for d in dashboard_manager.dashboards if d["id"] == dashboard_id), None)
+    # Generar todos los dashboards implementados
+    all_dashboards = []
+    implemented_dashboards = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 21, 23, 26, 31, 36]
     
-    if not dashboard_info:
-        return "Dashboard no encontrado", 404
+    for dashboard_id in implemented_dashboards:
+        dashboard_info = next((d for d in dashboard_manager.dashboards if d["id"] == dashboard_id), None)
+        if dashboard_info:
+            dashboard_data = dashboard_manager.generate_dashboard(dashboard_id, filters)
+            all_dashboards.append({
+                'info': dashboard_info,
+                'data': dashboard_data
+            })
     
-    return render_template('dashboard.html', 
-                         dashboard=dashboard_info, 
-                         dashboard_data=dashboard_data,
+    return render_template('unified_dashboard.html', 
+                         all_dashboards=all_dashboards,
                          filters=filters)
-
-@app.route('/api/search')
-def search_dashboards():
-    query = request.args.get('q', '').lower()
-    category = request.args.get('category', '')
-    
-    dashboards = dashboard_manager.dashboards
-    
-    # Filtrar por categoría
-    if category:
-        dashboards = [d for d in dashboards if d['category'] == category]
-    
-    # Filtrar por búsqueda
-    if query:
-        dashboards = [d for d in dashboards if 
-                     query in d['name'].lower() or 
-                     query in d['description'].lower()]
-    
-    return jsonify(dashboards)
 
 @app.route('/api/filters')
 def get_filters():

@@ -155,7 +155,7 @@ class DashboardManager:
             title='Estudiantes por Carrera',
             labels={'total_estudiantes': 'Número de Estudiantes', 'carrera': 'Carrera'}
         )
-        fig.update_xaxis(tickangle=45)
+        fig.update_xaxes(tickangle=45)
         fig.update_layout(height=500)
         
         return {
@@ -341,7 +341,7 @@ class DashboardManager:
             y='cantidad',
             title='Estudiantes por Período de Ingreso'
         )
-        fig.update_xaxis(tickangle=45)
+        fig.update_xaxes(tickangle=45)
         fig.update_layout(height=400)
         
         return {
@@ -449,7 +449,9 @@ class DashboardManager:
             "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
             "data": data
         }
-    
+
+    # Agregar al final de la clase DashboardManager, después del método dashboard_abandono_escolar:
+
     def dashboard_abandono_escolar(self, filters=None):
         data = self.db.get_abandono_stats()
         
@@ -458,4 +460,162 @@ class DashboardManager:
         
         df = pd.DataFrame(data)
         
-        fig = px
+        fig = px.pie(
+            df,
+            values='cantidad',
+            names='tipo',
+            title='Distribución de Tipos de Abandono Escolar'
+        )
+        fig.update_layout(height=400)
+        
+        return {
+            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "data": data
+        }
+    
+    def dashboard_pagos_periodo(self, filters=None):
+        data = self.db.get_pagos_por_periodo()
+        
+        if not data:
+            return {"error": "No se pudieron obtener los datos de pagos"}
+        
+        df = pd.DataFrame(data)
+        
+        # Crear gráfico de barras agrupadas
+        fig = make_subplots(
+            rows=2, cols=1,
+            subplot_titles=('Pagos por Período', 'Montos Totales'),
+            vertical_spacing=0.15
+        )
+        
+        fig.add_trace(
+            go.Bar(
+                x=df['periodo'],
+                y=df['pagos_realizados'],
+                name='Pagos Realizados',
+                marker_color='green'
+            ),
+            row=1, col=1
+        )
+        
+        fig.add_trace(
+            go.Bar(
+                x=df['periodo'],
+                y=df['pagos_pendientes'],
+                name='Pagos Pendientes',
+                marker_color='red'
+            ),
+            row=1, col=1
+        )
+        
+        fig.add_trace(
+            go.Bar(
+                x=df['periodo'],
+                y=df['monto_total'],
+                name='Monto Total',
+                marker_color='blue'
+            ),
+            row=2, col=1
+        )
+        
+        fig.update_layout(height=600, title="Análisis de Pagos por Período")
+        
+        return {
+            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "data": data
+        }
+    
+    def dashboard_egresados_año(self, filters=None):
+        data = self.db.get_egresados_por_año()
+        
+        if not data:
+            return {"error": "No se pudieron obtener los datos de egresados"}
+        
+        df = pd.DataFrame(data)
+        
+        # Convertir promedio a numérico
+        df['promedio_general'] = pd.to_numeric(df['promedio_general'], errors='coerce')
+        
+        # Crear gráfico de líneas con dos ejes Y
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        
+        fig.add_trace(
+            go.Bar(
+                x=df['año'],
+                y=df['cantidad'],
+                name='Número de Egresados',
+                marker_color='lightblue'
+            ),
+            secondary_y=False,
+        )
+        
+        fig.add_trace(
+            go.Scatter(
+                x=df['año'],
+                y=df['promedio_general'],
+                mode='lines+markers',
+                name='Promedio General',
+                line=dict(color='red', width=3)
+            ),
+            secondary_y=True,
+        )
+        
+        fig.update_xaxes(title_text="Año")
+        fig.update_yaxes(title_text="Número de Egresados", secondary_y=False)
+        fig.update_yaxes(title_text="Promedio General", secondary_y=True)
+        fig.update_layout(height=400, title="Egresados por Año y Promedio General")
+        
+        return {
+            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "data": data
+        }
+    
+    def dashboard_uso_recursos(self, filters=None):
+        data = self.db.get_uso_recursos()
+        
+        if not data:
+            return {"error": "No se pudieron obtener los datos de uso de recursos"}
+        
+        df = pd.DataFrame(data)
+        
+        # Convertir duración a numérico
+        df['duracion_promedio'] = pd.to_numeric(df['duracion_promedio'], errors='coerce')
+        
+        fig = px.bar(
+            df,
+            y='recurso',
+            x='usos',
+            orientation='h',
+            title='Uso de Recursos (Top 10)',
+            color='duracion_promedio',
+            color_continuous_scale='Viridis',
+            hover_data=['duracion_promedio']
+        )
+        fig.update_layout(height=500)
+        
+        return {
+            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "data": data
+        }
+    
+    def dashboard_placeholder(self, dashboard_info):
+        """Método para dashboards no implementados"""
+        fig = go.Figure()
+        fig.add_annotation(
+            text=f"Dashboard '{dashboard_info['name']}' en desarrollo",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, xanchor='center', yanchor='middle',
+            showarrow=False,
+            font=dict(size=16, color="gray")
+        )
+        fig.update_layout(
+            height=400,
+            title=f"{dashboard_info['name']} - En Desarrollo",
+            xaxis=dict(showgrid=False, showticklabels=False, zeroline=False),
+            yaxis=dict(showgrid=False, showticklabels=False, zeroline=False)
+        )
+        
+        return {
+            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "data": {"message": "Dashboard en desarrollo"}
+        }

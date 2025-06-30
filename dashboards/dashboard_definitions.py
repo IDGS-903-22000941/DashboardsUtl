@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
 
+
 class DashboardManager:
     def __init__(self, db):
         self.db = db
@@ -112,7 +113,9 @@ class DashboardManager:
             14: ("modalidad_rendimiento", "bar_grouped", "Rendimiento por Modalidad"),
             15: ("asistencia_calificaciones", "scatter", "Correlación Asistencia-Calificación"),
             16: ("profesores_area", "pie", "Distribución de Profesores por Área"),
-            17: ("capacidad_grupos", "bar", "Capacidad vs Ocupación de Grupos"),
+            17: ("capacidad_grupos", "capacity", "Capacidad vs Ocupación de Grupos"),
+
+
             18: ("aulas_turno", "bar_grouped", "Ocupación de Aulas por Turno"),
             19: ("horarios_preferencias", "bar", "Preferencias de Horarios"),
             20: ("rendimiento_cuatrimestre", "bar_grouped", "Rendimiento Académico por Cuatrimestre"),
@@ -126,17 +129,20 @@ class DashboardManager:
             
             # Financiero (26-30) - ACTUALIZADOS
             26: ("pagos_stats", "bar_grouped", "Pagos por Período"),
-            27: ("morosidad_carrera", "bar_h", "Morosidad por Carrera"),
+            27: ("morosidad_carrera", "morosity", "Morosidad por Carrera"),
+
             28: ("inversion_becas", "pie", "Inversión en Becas por Tipo"),
             29: ("diversificacion_ingresos", "pie", "Diversificación de Ingresos"),
             30: ("becas_rendimiento", "scatter", "Becas por Rendimiento Académico"),
             
             # Egresados (31-35) - ACTUALIZADOS
             31: ("egresados_stats", "bar_line", "Egresados por Año"),
-            32: ("insercion_laboral", "bar_h", "Inserción Laboral por Carrera"),
-            33: ("analisis_salarial", "box", "Análisis Salarial por Área"),
+            32: ("insercion_laboral", "employment", "Inserción Laboral por Carrera"),
+            33: ("analisis_salarial", "salary_analysis", "Análisis Salarial por Área"),
+
+
             34: ("evaluacion_institucional", "bar", "Evaluación Institucional"),
-            35: ("eficiencia_terminal", "bar", "Eficiencia Terminal por Carrera"),
+            35: ("eficiencia_terminal", "terminal_efficiency", "Eficiencia Terminal por Carrera"),
             
             # Recursos (36-40) - ACTUALIZADOS
             36: ("recursos_stats", "bar_h", "Uso de Recursos"),
@@ -937,3 +943,253 @@ class DashboardManager:
         </div>
         """
         return {"chart": html, "data": []}
+    
+    def create_capacity_chart(self, df, title, dashboard_id):
+        """Crear gráfico de capacidad vs ocupación"""
+        try:
+            if df.empty:
+                return {"error": "No hay datos disponibles"}
+            
+            fig = go.Figure()
+            
+            # Barras de ocupación
+            fig.add_trace(go.Bar(
+                name='Ocupación Actual',
+                x=df['grupo'],
+                y=df['ocupacion'],
+                marker_color='lightblue'
+            ))
+            
+            # Línea de capacidad máxima
+            fig.add_trace(go.Scatter(
+                name='Capacidad Máxima',
+                x=df['grupo'],
+                y=df['capacidad_maxima'],
+                mode='lines+markers',
+                line=dict(color='red', dash='dash'),
+                yaxis='y'
+            ))
+            
+            fig.update_layout(
+                title=title,
+                xaxis_title="Grupos",
+                yaxis_title="Número de Estudiantes",
+                height=400,
+                margin=dict(t=50, b=100, l=40, r=40),
+                xaxis={'tickangle': -45}
+            )
+            
+            return {"chart": fig.to_html(div_id=f"chart-{dashboard_id}"), "data": df.to_dict('records')}
+        except Exception as e:
+            return {"error": f"Error en gráfico de capacidad: {str(e)}"}
+
+    def create_morosity_chart(self, df, title, dashboard_id):
+        """Crear gráfico de morosidad por carrera"""
+        try:
+            if df.empty:
+                return {"error": "No hay datos disponibles"}
+            
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+            
+            # Barras de estudiantes morosos
+            fig.add_trace(
+                go.Bar(
+                    name='Estudiantes Morosos',
+                    x=df['carrera'],
+                    y=df['estudiantes_morosos'],
+                    marker_color='red',
+                    opacity=0.7
+                ),
+                secondary_y=False,
+            )
+            
+            # Línea de porcentaje de morosidad
+            fig.add_trace(
+                go.Scatter(
+                    name='% Morosidad',
+                    x=df['carrera'],
+                    y=df['porcentaje_morosidad'],
+                    mode='lines+markers',
+                    line=dict(color='darkred', width=3),
+                    marker=dict(size=8)
+                ),
+                secondary_y=True,
+            )
+            
+            fig.update_layout(
+                title=title,
+                height=400,
+                margin=dict(t=50, b=100, l=40, r=40),
+                xaxis={'tickangle': -45}
+            )
+            
+            fig.update_yaxes(title_text="Número de Estudiantes", secondary_y=False)
+            fig.update_yaxes(title_text="Porcentaje de Morosidad (%)", secondary_y=True)
+            
+            return {"chart": fig.to_html(div_id=f"chart-{dashboard_id}"), "data": df.to_dict('records')}
+        except Exception as e:
+            return {"error": f"Error en gráfico de morosidad: {str(e)}"}
+
+    def create_employment_chart(self, df, title, dashboard_id):
+        """Crear gráfico de inserción laboral"""
+        try:
+            if df.empty:
+                return {"error": "No hay datos disponibles"}
+            
+            fig = go.Figure()
+            
+            # Barras apiladas para empleados vs desempleados
+            fig.add_trace(go.Bar(
+                name='Empleados',
+                x=df['carrera'],
+                y=df['empleados'],
+                marker_color='green',
+                text=df['empleados'],
+                textposition='inside'
+            ))
+            
+            fig.add_trace(go.Bar(
+                name='Desempleados',
+                x=df['carrera'],
+                y=df['desempleados'],
+                marker_color='orange',
+                text=df['desempleados'],
+                textposition='inside'
+            ))
+            
+            # Línea de porcentaje de empleabilidad
+            fig.add_trace(go.Scatter(
+                name='% Empleabilidad',
+                x=df['carrera'],
+                y=df['porcentaje_empleabilidad'],
+                mode='lines+markers',
+                line=dict(color='darkgreen', width=3),
+                marker=dict(size=10),
+                yaxis='y2'
+            ))
+            
+            fig.update_layout(
+                title=title,
+                barmode='stack',
+                height=400,
+                margin=dict(t=50, b=100, l=40, r=40),
+                xaxis={'tickangle': -45},
+                yaxis=dict(title="Número de Egresados"),
+                yaxis2=dict(
+                    title="Porcentaje de Empleabilidad (%)",
+                    overlaying='y',
+                    side='right'
+                )
+            )
+            
+            return {"chart": fig.to_html(div_id=f"chart-{dashboard_id}"), "data": df.to_dict('records')}
+        except Exception as e:
+            return {"error": f"Error en gráfico de empleo: {str(e)}"}
+
+    def create_salary_analysis_chart(self, df, title, dashboard_id):
+        """Crear gráfico de análisis salarial por área"""
+        try:
+            if df.empty:
+                return {"error": "No hay datos disponibles"}
+            
+            # Agrupar por área para crear box plots
+            areas = df['area'].unique()
+            
+            fig = go.Figure()
+            
+            for area in areas:
+                area_data = df[df['area'] == area]
+                fig.add_trace(go.Box(
+                    y=area_data['salario'],
+                    name=area,
+                    boxpoints='outliers',
+                    hovertemplate=f"<b>{area}</b><br>" +
+                                  "Salario: $%{y:,.0f}<br>" +
+                                  "<extra></extra>"
+                ))
+            
+            fig.update_layout(
+                title=title,
+                yaxis_title="Salario Inicial (MXN)",
+                height=400,
+                margin=dict(t=50, b=40, l=60, r=40)
+            )
+            
+            # Agregar información estadística
+            stats_text = []
+            for area in areas:
+                area_data = df[df['area'] == area]['salario']
+                if len(area_data) > 0:
+                    stats_text.append(f"{area}: Promedio ${area_data.mean():,.0f}")
+            
+            return {
+                "chart": fig.to_html(div_id=f"chart-{dashboard_id}"), 
+                "data": df.to_dict('records'),
+                "stats": stats_text
+            }
+        except Exception as e:
+            return {"error": f"Error en análisis salarial: {str(e)}"}
+
+    def create_terminal_efficiency_chart(self, df, title, dashboard_id):
+        """Crear gráfico de eficiencia terminal"""
+        try:
+            if df.empty:
+                return {"error": "No hay datos disponibles"}
+            
+            fig = make_subplots(
+                rows=1, cols=1,
+                specs=[[{"secondary_y": True}]]
+            )
+            
+            # Barras de eficiencia porcentual
+            fig.add_trace(
+                go.Bar(
+                    name='Eficiencia Terminal (%)',
+                    x=df['carrera'],
+                    y=df['eficiencia_porcentaje'],
+                    marker_color='lightgreen',
+                    text=[f"{val}%" for val in df['eficiencia_porcentaje']],
+                    textposition='outside'
+                ),
+                secondary_y=False
+            )
+            
+            # Línea de tiempo promedio real
+            fig.add_trace(
+                go.Scatter(
+                    name='Meses Promedio Real',
+                    x=df['carrera'],
+                    y=df['promedio_meses_reales'],
+                    mode='lines+markers',
+                    line=dict(color='red', width=3),
+                    marker=dict(size=8)
+                ),
+                secondary_y=True
+            )
+            
+            # Línea de tiempo teórico
+            fig.add_trace(
+                go.Scatter(
+                    name='Duración Teórica',
+                    x=df['carrera'],
+                    y=df['duracion_meses_teorica'],
+                    mode='lines+markers',
+                    line=dict(color='blue', width=2, dash='dash'),
+                    marker=dict(size=6)
+                ),
+                secondary_y=True
+            )
+            
+            fig.update_layout(
+                title=title,
+                height=400,
+                margin=dict(t=50, b=100, l=40, r=40),
+                xaxis={'tickangle': -45}
+            )
+            
+            fig.update_yaxes(title_text="Eficiencia Terminal (%)", secondary_y=False)
+            fig.update_yaxes(title_text="Duración (Meses)", secondary_y=True)
+            
+            return {"chart": fig.to_html(div_id=f"chart-{dashboard_id}"), "data": df.to_dict('records')}
+        except Exception as e:
+            return {"error": f"Error en eficiencia terminal: {str(e)}"}

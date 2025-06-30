@@ -588,3 +588,320 @@ class DashboardManager:
                 return self.create_line_chart(df, title, dashboard_id)
             elif chart_type == "scatter":
                 return self.create_scatter_chart(df, title, dashboard_id)
+            elif chart_type == "bar_grouped":
+                return self.create_grouped_bar_chart(df, title, dashboard_id)
+            elif chart_type == "histogram":
+                return self.create_histogram_chart(df, title, dashboard_id)
+            elif chart_type == "bar_line":
+                return self.create_bar_line_chart(df, title, dashboard_id)
+            elif chart_type == "box":
+                return self.create_box_chart(df, title, dashboard_id)
+            elif chart_type == "subplots":
+                return self.create_subplots_chart(df, title, dashboard_id)
+            else:
+                return self.create_placeholder({"name": title}, dashboard_id)
+                
+        except Exception as e:
+            return {"error": f"Error creando gráfico {title}: {str(e)}"}
+    
+    def create_indicators(self, df, title, dashboard_id):
+        """Crear indicadores numéricos"""
+        try:
+            if df.empty:
+                return {"error": "No hay datos disponibles"}
+            
+            row = df.iloc[0]
+            html = f"""
+            <div class="container-fluid p-3">
+                <div class="row text-center">
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="border rounded p-3 bg-primary text-white">
+                            <h3 class="mb-1">{row.get('total', 0):,}</h3>
+                            <small>Total</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="border rounded p-3 bg-success text-white">
+                            <h3 class="mb-1">{row.get('activos', 0):,}</h3>
+                            <small>Activos</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="border rounded p-3 bg-info text-white">
+                            <h3 class="mb-1">{row.get('con_beca', 0):,}</h3>
+                            <small>Con Beca</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="border rounded p-3 bg-warning text-white">
+                            <h3 class="mb-1">{row.get('edad_promedio', 0):.1f}</h3>
+                            <small>Edad Promedio</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            """
+            return {"chart": html, "data": df.to_dict('records')}
+        except Exception as e:
+            return {"error": f"Error en indicadores: {str(e)}"}
+    
+    def create_pie_chart(self, df, title, dashboard_id):
+        """Crear gráfico de pastel"""
+        try:
+            if df.empty:
+                return {"error": "No hay datos disponibles"}
+            
+            # Detectar columnas automáticamente
+            label_col = df.columns[0]
+            value_col = df.columns[1]
+            
+            fig = px.pie(df, values=value_col, names=label_col, title=title)
+            fig.update_layout(height=350, margin=dict(t=50, b=0, l=0, r=0))
+            
+            return {"chart": fig.to_html(div_id=f"chart-{dashboard_id}"), "data": df.to_dict('records')}
+        except Exception as e:
+            return {"error": f"Error en gráfico de pastel: {str(e)}"}
+    
+    def create_bar_chart(self, df, title, dashboard_id):
+        """Crear gráfico de barras vertical"""
+        try:
+            if df.empty:
+                return {"error": "No hay datos disponibles"}
+            
+            x_col = df.columns[0]
+            y_col = df.columns[1]
+            
+            fig = px.bar(df, x=x_col, y=y_col, title=title)
+            fig.update_layout(height=350, margin=dict(t=50, b=40, l=40, r=40))
+            
+            return {"chart": fig.to_html(div_id=f"chart-{dashboard_id}"), "data": df.to_dict('records')}
+        except Exception as e:
+            return {"error": f"Error en gráfico de barras: {str(e)}"}
+    
+    def create_horizontal_bar_chart(self, df, title, dashboard_id):
+        """Crear gráfico de barras horizontal"""
+        try:
+            if df.empty:
+                return {"error": "No hay datos disponibles"}
+            
+            x_col = df.columns[1]  # Valor
+            y_col = df.columns[0]  # Etiqueta
+            
+            fig = px.bar(df, x=x_col, y=y_col, orientation='h', title=title)
+            fig.update_layout(height=350, margin=dict(t=50, b=40, l=100, r=40))
+            
+            return {"chart": fig.to_html(div_id=f"chart-{dashboard_id}"), "data": df.to_dict('records')}
+        except Exception as e:
+            return {"error": f"Error en gráfico de barras horizontal: {str(e)}"}
+    
+    def create_line_chart(self, df, title, dashboard_id):
+        """Crear gráfico de líneas"""
+        try:
+            if df.empty:
+                return {"error": "No hay datos disponibles"}
+            
+            x_col = df.columns[0]
+            y_col = df.columns[1]
+            
+            fig = px.line(df, x=x_col, y=y_col, title=title, markers=True)
+            fig.update_layout(height=350, margin=dict(t=50, b=40, l=40, r=40))
+            
+            return {"chart": fig.to_html(div_id=f"chart-{dashboard_id}"), "data": df.to_dict('records')}
+        except Exception as e:
+            return {"error": f"Error en gráfico de líneas: {str(e)}"}
+    
+    def create_scatter_chart(self, df, title, dashboard_id):
+        """Crear gráfico de dispersión"""
+        try:
+            if df.empty:
+                return {"error": "No hay datos disponibles"}
+            
+            x_col = df.columns[0]
+            y_col = df.columns[1]
+            
+            # Si hay una tercera columna, usarla para hover
+            hover_data = [df.columns[2]] if len(df.columns) > 2 else None
+            
+            fig = px.scatter(df, x=x_col, y=y_col, title=title, hover_data=hover_data)
+            fig.update_layout(height=350, margin=dict(t=50, b=40, l=40, r=40))
+            
+            return {"chart": fig.to_html(div_id=f"chart-{dashboard_id}"), "data": df.to_dict('records')}
+        except Exception as e:
+            return {"error": f"Error en gráfico de dispersión: {str(e)}"}
+    
+    def create_grouped_bar_chart(self, df, title, dashboard_id):
+        """Crear gráfico de barras agrupadas"""
+        try:
+            if df.empty:
+                return {"error": "No hay datos disponibles"}
+            
+            # Asumir que las columnas son: categoría, valor1, valor2, etc.
+            category_col = df.columns[0]
+            
+            fig = go.Figure()
+            
+            for col in df.columns[1:]:
+                fig.add_trace(go.Bar(
+                    name=col.replace('_', ' ').title(),
+                    x=df[category_col],
+                    y=df[col]
+                ))
+            
+            fig.update_layout(
+                title=title,
+                barmode='group',
+                height=350,
+                margin=dict(t=50, b=40, l=40, r=40)
+            )
+            
+            return {"chart": fig.to_html(div_id=f"chart-{dashboard_id}"), "data": df.to_dict('records')}
+        except Exception as e:
+            return {"error": f"Error en gráfico de barras agrupadas: {str(e)}"}
+    
+    def create_histogram_chart(self, df, title, dashboard_id):
+        """Crear histograma"""
+        try:
+            if df.empty:
+                return {"error": "No hay datos disponibles"}
+            
+            value_col = df.columns[0]
+            
+            fig = px.histogram(df, x=value_col, title=title, nbins=10)
+            fig.update_layout(height=350, margin=dict(t=50, b=40, l=40, r=40))
+            
+            return {"chart": fig.to_html(div_id=f"chart-{dashboard_id}"), "data": df.to_dict('records')}
+        except Exception as e:
+            return {"error": f"Error en histograma: {str(e)}"}
+    
+    def create_bar_line_chart(self, df, title, dashboard_id):
+        """Crear gráfico combinado barras + línea"""
+        try:
+            if df.empty:
+                return {"error": "No hay datos disponibles"}
+            
+            x_col = df.columns[0]
+            y1_col = df.columns[1]
+            y2_col = df.columns[2] if len(df.columns) > 2 else df.columns[1]
+            
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+            
+            fig.add_trace(
+                go.Bar(x=df[x_col], y=df[y1_col], name=y1_col.replace('_', ' ').title()),
+                secondary_y=False,
+            )
+            
+            fig.add_trace(
+                go.Scatter(x=df[x_col], y=df[y2_col], mode='lines+markers', 
+                          name=y2_col.replace('_', ' ').title()),
+                secondary_y=True,
+            )
+            
+            fig.update_layout(title=title, height=350, margin=dict(t=50, b=40, l=40, r=40))
+            fig.update_yaxes(title_text="Cantidad", secondary_y=False)
+            fig.update_yaxes(title_text="Promedio", secondary_y=True)
+            
+            return {"chart": fig.to_html(div_id=f"chart-{dashboard_id}"), "data": df.to_dict('records')}
+        except Exception as e:
+            return {"error": f"Error en gráfico combinado: {str(e)}"}
+    
+    def create_box_chart(self, df, title, dashboard_id):
+        """Crear gráfico de caja (box plot)"""
+        try:
+            if df.empty:
+                return {"error": "No hay datos disponibles"}
+            
+            # Para box plot, necesitamos los datos expandidos
+            category_col = df.columns[0]
+            
+            fig = go.Figure()
+            
+            # Si tenemos columnas de salarios min, max, promedio
+            if 'salario_min' in df.columns:
+                for _, row in df.iterrows():
+                    # Simular distribución basada en min, max, promedio
+                    salarios = [
+                        row['salario_min'], 
+                        row['salario_promedio'],
+                        row['salario_max']
+                    ]
+                    fig.add_trace(go.Box(
+                        y=salarios,
+                        name=row[category_col],
+                        boxpoints='all'
+                    ))
+            else:
+                # Box plot simple
+                value_col = df.columns[1]
+                fig.add_trace(go.Box(y=df[value_col], name=title))
+            
+            fig.update_layout(title=title, height=350, margin=dict(t=50, b=40, l=40, r=40))
+            
+            return {"chart": fig.to_html(div_id=f"chart-{dashboard_id}"), "data": df.to_dict('records')}
+        except Exception as e:
+            return {"error": f"Error en gráfico de caja: {str(e)}"}
+    
+    def create_subplots_chart(self, df, title, dashboard_id):
+        """Crear dashboard integral con múltiples subgráficos"""
+        try:
+            fig = make_subplots(
+                rows=2, cols=2,
+                subplot_titles=('Estudiantes por Carrera', 'Calificaciones', 'Pagos', 'Egresados'),
+                specs=[[{"type": "bar"}, {"type": "scatter"}],
+                       [{"type": "bar"}, {"type": "bar"}]]
+            )
+            
+            # Datos simulados para el dashboard integral
+            carreras = ['Sistemas', 'Industrial', 'Mecánica', 'Civil']
+            estudiantes = [120, 98, 75, 65]
+            calificaciones = [85, 82, 88, 79]
+            pagos = [95, 87, 92, 83]
+            egresados = [45, 32, 28, 25]
+            
+            # Gráfico 1: Estudiantes por carrera
+            fig.add_trace(
+                go.Bar(x=carreras, y=estudiantes, name="Estudiantes"),
+                row=1, col=1
+            )
+            
+            # Gráfico 2: Calificaciones
+            fig.add_trace(
+                go.Scatter(x=carreras, y=calificaciones, mode='lines+markers', name="Promedio"),
+                row=1, col=2
+            )
+            
+            # Gráfico 3: Pagos
+            fig.add_trace(
+                go.Bar(x=carreras, y=pagos, name="% Pagos", marker_color='lightblue'),
+                row=2, col=1
+            )
+            
+            # Gráfico 4: Egresados
+            fig.add_trace(
+                go.Bar(x=carreras, y=egresados, name="Egresados", marker_color='lightgreen'),
+                row=2, col=2
+            )
+            
+            fig.update_layout(
+                title=title,
+                height=500,
+                showlegend=False,
+                margin=dict(t=80, b=40, l=40, r=40)
+            )
+            
+            return {"chart": fig.to_html(div_id=f"chart-{dashboard_id}"), "data": []}
+        except Exception as e:
+            return {"error": f"Error en dashboard integral: {str(e)}"}
+    
+    def create_placeholder(self, dashboard_info, dashboard_id):
+        """Crear placeholder para dashboards sin implementar"""
+        html = f"""
+        <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+            <div class="text-center">
+                <i class="fas fa-chart-area fa-3x mb-3 opacity-50"></i>
+                <h5>Dashboard en Desarrollo</h5>
+                <p>#{dashboard_id} - {dashboard_info.get('name', 'Dashboard')}</p>
+                <small>Próximamente disponible</small>
+            </div>
+        </div>
+        """
+        return {"chart": html, "data": []}

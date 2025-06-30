@@ -115,7 +115,7 @@ class DashboardManager:
             17: ("capacidad_grupos", "bar", "Capacidad vs Ocupación de Grupos"),
             18: ("aulas_turno", "bar_grouped", "Ocupación de Aulas por Turno"),
             19: ("horarios_preferencias", "bar", "Preferencias de Horarios"),
-            20: ("creditos_distribucion", "histogram", "Distribución de Créditos"),
+            20: ("rendimiento_cuatrimestre", "bar_grouped", "Rendimiento Académico por Cuatrimestre"),
             
             # Riesgo (21-25) - ACTUALIZADOS
             21: ("riesgo_stats", "bar", "Estudiantes en Riesgo"),
@@ -280,15 +280,20 @@ class DashboardManager:
             """,
             
             "capacidad_grupos": """
-                SELECT 
-                    CONCAT('Grupo ', CHAR(64 + ROW_NUMBER() OVER())) as grupo,
-                    ROUND(RAND() * 15 + 25) as ocupacion,
-                    35 as capacidad_maxima
-                FROM (
-                    SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5
-                    UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10
-                ) as nums
-            """,
+    SELECT 
+        CONCAT(m.nombre, ' - ', g.nombre) as grupo,
+        COUNT(DISTINCT e.id) as ocupacion,
+        g.capacidad_maxima,
+        ROUND((COUNT(DISTINCT e.id) * 100.0 / g.capacidad_maxima), 1) as porcentaje_ocupacion
+    FROM grupos g
+    LEFT JOIN materias m ON g.materia_id = m.id
+    LEFT JOIN inscripciones i ON g.id = i.grupo_id
+    LEFT JOIN estudiantes e ON i.estudiante_id = e.id AND e.activo = 1
+    WHERE g.activo = 1
+    GROUP BY g.id, m.nombre, g.nombre, g.capacidad_maxima
+    ORDER BY porcentaje_ocupacion DESC
+    LIMIT 15
+""",
             
             "aulas_turno": """
                 SELECT 
@@ -318,16 +323,18 @@ class DashboardManager:
                 SELECT '19:00-21:00' as horario, 41 as solicitudes
             """,
             
-            "creditos_distribucion": """
-                SELECT 
-                    creditos_cursando as creditos
-                FROM (
-                    SELECT 18 as creditos_cursando UNION SELECT 21 UNION SELECT 24 UNION SELECT 27
-                    UNION SELECT 15 UNION SELECT 18 UNION SELECT 21 UNION SELECT 24 UNION SELECT 27
-                    UNION SELECT 12 UNION SELECT 15 UNION SELECT 18 UNION SELECT 21 UNION SELECT 24
-                    UNION SELECT 18 UNION SELECT 21 UNION SELECT 24 UNION SELECT 15 UNION SELECT 18
-                ) as distribucion
-            """,
+            "rendimiento_cuatrimestre": """
+    SELECT 
+        CONCAT('Cuatrimestre ', c.cuatrimestre) as periodo,
+        AVG(CAST(c.calificacion_final AS DECIMAL(4,2))) as promedio,
+        COUNT(*) as total_calificaciones,
+        COUNT(CASE WHEN c.aprobada = 1 THEN 1 END) as aprobadas,
+        ROUND((COUNT(CASE WHEN c.aprobada = 1 THEN 1 END) * 100.0 / COUNT(*)), 1) as porcentaje_aprobacion
+    FROM calificaciones c
+    WHERE c.calificacion_final IS NOT NULL
+    GROUP BY c.cuatrimestre
+    ORDER BY c.cuatrimestre
+""",
             
             # Riesgo ACTUALIZADAS
             "riesgo_stats": """
@@ -392,17 +399,20 @@ class DashboardManager:
             """,
             
             "morosidad_carrera": """
-                SELECT 
-                    c.nombre as carrera,
-                    COUNT(CASE WHEN p.dias_vencido > 30 THEN 1 END) as morosos,
-                    COUNT(p.id) as total_pagos
-                FROM carreras c
-                JOIN estudiantes e ON c.codigo = e.carrera_codigo
-                JOIN pagos p ON e.id = p.id_estudiante
-                WHERE c.activa = 1
-                GROUP BY c.id
-                ORDER BY morosos DESC
-            """,
+    SELECT 
+        car.nombre as carrera,
+        COUNT(DISTINCT CASE WHEN p.estado = 'Pendiente' AND DATEDIFF(CURDATE(), p.fecha_vencimiento) > 30 THEN e.id END) as estudiantes_morosos,
+        COUNT(DISTINCT e.id) as total_estudiantes,
+        ROUND((COUNT(DISTINCT CASE WHEN p.estado = 'Pendiente' AND DATEDIFF(CURDATE(), p.fecha_vencimiento) > 30 THEN e.id END) * 100.0 / COUNT(DISTINCT e.id)), 1) as porcentaje_morosidad,
+        SUM(CASE WHEN p.estado = 'Pendiente' AND DATEDIFF(CURDATE(), p.fecha_vencimiento) > 30 THEN p.monto ELSE 0 END) as monto_moroso
+    FROM carreras car
+    JOIN estudiantes e ON car.codigo = e.carrera_codigo
+    LEFT JOIN pagos p ON e.id = p.estudiante_id
+    WHERE car.activa = 1 AND e.activo = 1
+    GROUP BY car.id, car.nombre
+    HAVING total_estudiantes > 0
+    ORDER BY porcentaje_morosidad DESC
+""",
             
             "inversion_becas": """
                 SELECT 
@@ -450,31 +460,39 @@ class DashboardManager:
             """,
             
             "insercion_laboral": """
-                SELECT 
-                    c.nombre as carrera,
-                    COUNT(CASE WHEN e.empleado = 1 THEN 1 END) as empleados,
-                    COUNT(*) as total_egresados,
-                    ROUND((COUNT(CASE WHEN e.empleado = 1 THEN 1 END) * 100.0 / COUNT(*)), 1) as porcentaje_empleabilidad
-                FROM carreras c
-                JOIN egresados e ON c.codigo = e.carrera_codigo
-                WHERE c.activa = 1 AND e.fecha_egreso >= DATE_SUB(NOW(), INTERVAL 2 YEAR)
-                GROUP BY c.id
-                ORDER BY porcentaje_empleabilidad DESC
-            """,
+    SELECT 
+        c.nombre as carrera,
+        COUNT(DISTINCT eg.id) as total_egresados,
+        COUNT(DISTINCT CASE WHEN eg.empleado = 1 THEN eg.id END) as empleados,
+        COUNT(DISTINCT CASE WHEN eg.empleado = 0 THEN eg.id END) as desempleados,
+        AVG(CASE WHEN eg.salario_inicial > 0 THEN eg.salario_inicial END) as salario_promedio,
+        ROUND((COUNT(DISTINCT CASE WHEN eg.empleado = 1 THEN eg.id END) * 100.0 / COUNT(DISTINCT eg.id)), 1) as porcentaje_empleabilidad
+    FROM carreras c
+    JOIN egresados eg ON c.codigo = eg.carrera_codigo
+    WHERE c.activa = 1 AND eg.fecha_egreso >= DATE_SUB(CURDATE(), INTERVAL 3 YEAR)
+    GROUP BY c.id, c.nombre
+    HAVING total_egresados > 0
+    ORDER BY porcentaje_empleabilidad DESC
+""",
             
             "analisis_salarial": """
-                SELECT 
-                    c.nombre as area,
-                    MIN(e.salario_inicial) as salario_min,
-                    MAX(e.salario_inicial) as salario_max,
-                    AVG(e.salario_inicial) as salario_promedio,
-                    e.salario_inicial as salario
-                FROM carreras c
-                JOIN egresados e ON c.codigo = e.carrera_codigo
-                WHERE e.salario_inicial IS NOT NULL AND e.salario_inicial > 0
-                GROUP BY c.id, e.salario_inicial
-            """,
-            
+    SELECT 
+        c.area_conocimiento as area,
+        c.nombre as carrera,
+        eg.salario_inicial as salario,
+        CASE 
+            WHEN eg.salario_inicial < 15000 THEN 'Bajo (< 15K)'
+            WHEN eg.salario_inicial BETWEEN 15000 AND 25000 THEN 'Medio (15K-25K)'
+            WHEN eg.salario_inicial BETWEEN 25001 AND 35000 THEN 'Alto (25K-35K)'
+            ELSE 'Muy Alto (> 35K)'
+        END as rango_salarial,
+        eg.tiempo_empleado_meses,
+        eg.satisfaccion_laboral
+    FROM carreras c
+    JOIN egresados eg ON c.codigo = eg.carrera_codigo
+    WHERE c.activa = 1 AND eg.salario_inicial IS NOT NULL AND eg.salario_inicial > 0
+    ORDER BY c.area_conocimiento, eg.salario_inicial DESC
+""",
             "evaluacion_institucional": """
                 SELECT 
                     'Calidad Educativa' as aspecto, 4.2 as calificacion
@@ -490,19 +508,22 @@ class DashboardManager:
                 SELECT 'Recomendaría la Institución' as aspecto, 4.3 as calificacion
             """,
             
-            "eficiencia_terminal": """
-                SELECT 
-                    c.nombre as carrera,
-                    COUNT(CASE WHEN TIMESTAMPDIFF(MONTH, e.fecha_ingreso, eg.fecha_egreso) <= c.duracion_meses THEN 1 END) as tiempo_regular,
-                    COUNT(*) as total_egresados,
-                    ROUND((COUNT(CASE WHEN TIMESTAMPDIFF(MONTH, e.fecha_ingreso, eg.fecha_egreso) <= c.duracion_meses THEN 1 END) * 100.0 / COUNT(*)), 1) as eficiencia_porcentaje
-                FROM carreras c
-                JOIN estudiantes e ON c.codigo = e.carrera_codigo
-                JOIN egresados eg ON e.id = eg.id_estudiante
-                WHERE c.activa = 1
-                GROUP BY c.id
-                ORDER BY eficiencia_porcentaje DESC
-            """,
+           "eficiencia_terminal": """
+    SELECT 
+        c.nombre as carrera,
+        c.duracion_cuatrimestres * 4 as duracion_meses_teorica,
+        COUNT(DISTINCT eg.id) as total_egresados,
+        COUNT(DISTINCT CASE WHEN TIMESTAMPDIFF(MONTH, e.fecha_ingreso, eg.fecha_egreso) <= (c.duracion_cuatrimestres * 4) THEN eg.id END) as egresados_tiempo_regular,
+        AVG(TIMESTAMPDIFF(MONTH, e.fecha_ingreso, eg.fecha_egreso)) as promedio_meses_reales,
+        ROUND((COUNT(DISTINCT CASE WHEN TIMESTAMPDIFF(MONTH, e.fecha_ingreso, eg.fecha_egreso) <= (c.duracion_cuatrimestres * 4) THEN eg.id END) * 100.0 / COUNT(DISTINCT eg.id)), 1) as eficiencia_porcentaje
+    FROM carreras c
+    JOIN estudiantes e ON c.codigo = e.carrera_codigo
+    JOIN egresados eg ON e.id = eg.estudiante_id
+    WHERE c.activa = 1 AND eg.fecha_egreso IS NOT NULL
+    GROUP BY c.id, c.nombre, c.duracion_cuatrimestres
+    HAVING total_egresados > 0
+    ORDER BY eficiencia_porcentaje DESC
+""",
             
             # Recursos ACTUALIZADAS
             "recursos_stats": """
@@ -598,6 +619,17 @@ class DashboardManager:
                 return self.create_box_chart(df, title, dashboard_id)
             elif chart_type == "subplots":
                 return self.create_subplots_chart(df, title, dashboard_id)
+            elif chart_type == "capacity":
+                return self.create_capacity_chart(df, title, dashboard_id)
+            elif chart_type == "morosity":
+                return self.create_morosity_chart(df, title, dashboard_id)  
+            elif chart_type == "employment":
+                return self.create_employment_chart(df, title, dashboard_id)
+            elif chart_type == "salary_analysis":
+                return self.create_salary_analysis_chart(df, title, dashboard_id)
+            elif chart_type == "terminal_efficiency":
+                return self.create_terminal_efficiency_chart(df, title, dashboard_id)
+            
             else:
                 return self.create_placeholder({"name": title}, dashboard_id)
                 

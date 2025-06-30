@@ -91,18 +91,18 @@ class DashboardManager:
         }
         
         if dashboard_id in dashboard_methods:
-            return dashboard_methods[dashboard_id](filters)
+            return dashboard_methods[dashboard_id](filters, dashboard_id)
         else:
-            return self.dashboard_placeholder(dashboard_info)
+            return self.dashboard_placeholder(dashboard_info, dashboard_id)
     
-    def dashboard_total_estudiantes(self, filters=None):
+    def dashboard_total_estudiantes(self, filters=None, dashboard_id=1):
         data = self.db.get_estudiantes_stats()
         if not data:
             return {"error": "No se pudieron obtener los datos de estudiantes"}
         
         stats = data[0]
         
-        # Crear gráfico de tarjetas
+        # Crear gráfico de tarjetas con ID único
         fig = go.Figure()
         fig.add_trace(go.Indicator(
             mode = "number",
@@ -135,11 +135,11 @@ class DashboardManager:
         fig.update_layout(height=400, title="Resumen General de Estudiantes")
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": stats
         }
     
-    def dashboard_estudiantes_por_carrera(self, filters=None):
+    def dashboard_estudiantes_por_carrera(self, filters=None, dashboard_id=2):
         data = self.db.get_carreras_stats()
         if not data:
             return {"error": "No se pudieron obtener los datos de carreras"}
@@ -159,11 +159,11 @@ class DashboardManager:
         fig.update_layout(height=500)
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
     
-    def dashboard_estudiantes_por_genero(self, filters=None):
+    def dashboard_estudiantes_por_genero(self, filters=None, dashboard_id=3):
         data = self.db.get_genero_stats()
         
         if not data:
@@ -181,11 +181,11 @@ class DashboardManager:
         fig.update_layout(height=400)
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
     
-    def dashboard_estudiantes_por_edad(self, filters=None):
+    def dashboard_estudiantes_por_edad(self, filters=None, dashboard_id=4):
         data = self.db.get_estudiantes_por_edad()
         
         if not data:
@@ -204,11 +204,11 @@ class DashboardManager:
         fig.update_layout(height=400)
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
     
-    def dashboard_estudiantes_por_estado(self, filters=None):
+    def dashboard_estudiantes_por_estado(self, filters=None, dashboard_id=5):
         data = self.db.get_estudiantes_por_estado()
         
         if not data:
@@ -228,11 +228,11 @@ class DashboardManager:
         fig.update_layout(height=500)
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
     
-    def dashboard_activos_inactivos(self, filters=None):
+    def dashboard_activos_inactivos(self, filters=None, dashboard_id=6):
         # Consulta directa para activos/inactivos
         query = """
         SELECT 
@@ -258,11 +258,11 @@ class DashboardManager:
         fig.update_layout(height=400)
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
     
-    def dashboard_estudiantes_beca(self, filters=None):
+    def dashboard_estudiantes_beca(self, filters=None, dashboard_id=7):
         data = self.db.get_becas_stats()
         
         if not data:
@@ -279,11 +279,11 @@ class DashboardManager:
         fig.update_layout(height=400)
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
     
-    def dashboard_tipo_escuela(self, filters=None):
+    def dashboard_tipo_escuela(self, filters=None, dashboard_id=8):
         data = self.db.get_tipo_escuela_stats()
         
         if not data:
@@ -301,11 +301,11 @@ class DashboardManager:
         fig.update_layout(height=400)
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
     
-    def dashboard_evolución_inscripciones(self, filters=None):
+    def dashboard_evolución_inscripciones(self, filters=None, dashboard_id=9):
         data = self.db.get_inscripciones_por_periodo()
         
         if not data:
@@ -323,11 +323,11 @@ class DashboardManager:
         fig.update_layout(height=400)
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
     
-    def dashboard_estudiantes_periodo(self, filters=None):
+    def dashboard_estudiantes_periodo(self, filters=None, dashboard_id=10):
         data = self.db.get_inscripciones_por_periodo()
         
         if not data:
@@ -345,11 +345,11 @@ class DashboardManager:
         fig.update_layout(height=400)
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
     
-    def dashboard_promedios_por_carrera(self, filters=None):
+    def dashboard_promedios_por_carrera(self, filters=None, dashboard_id=11):
         data = self.db.get_promedios_carrera()
         
         if not data:
@@ -374,11 +374,11 @@ class DashboardManager:
         fig.update_layout(height=500)
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
     
-    def dashboard_materias_reprobadas(self, filters=None):
+    def dashboard_materias_reprobadas(self, filters=None, dashboard_id=12):
         data = self.db.get_materias_reprobadas()
         
         if not data:
@@ -398,11 +398,11 @@ class DashboardManager:
         fig.update_layout(height=500)
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
     
-    def dashboard_calificaciones_cuatrimestre(self, filters=None):
+    def dashboard_calificaciones_cuatrimestre(self, filters=None, dashboard_id=13):
         data = self.db.get_calificaciones_por_cuatrimestre()
         
         if not data:
@@ -421,11 +421,11 @@ class DashboardManager:
         fig.update_layout(height=400)
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
     
-    def dashboard_estudiantes_riesgo(self, filters=None):
+    def dashboard_estudiantes_riesgo(self, filters=None, dashboard_id=21):
         data = self.db.get_riesgo_academico_stats()
         
         if not data:
@@ -446,13 +446,11 @@ class DashboardManager:
         fig.update_layout(height=400)
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
 
-    # Agregar al final de la clase DashboardManager, después del método dashboard_abandono_escolar:
-
-    def dashboard_abandono_escolar(self, filters=None):
+    def dashboard_abandono_escolar(self, filters=None, dashboard_id=23):
         data = self.db.get_abandono_stats()
         
         if not data:
@@ -469,11 +467,11 @@ class DashboardManager:
         fig.update_layout(height=400)
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
     
-    def dashboard_pagos_periodo(self, filters=None):
+    def dashboard_pagos_periodo(self, filters=None, dashboard_id=26):
         data = self.db.get_pagos_por_periodo()
         
         if not data:
@@ -521,11 +519,11 @@ class DashboardManager:
         fig.update_layout(height=600, title="Análisis de Pagos por Período")
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
     
-    def dashboard_egresados_año(self, filters=None):
+    def dashboard_egresados_año(self, filters=None, dashboard_id=31):
         data = self.db.get_egresados_por_año()
         
         if not data:
@@ -566,11 +564,11 @@ class DashboardManager:
         fig.update_layout(height=400, title="Egresados por Año y Promedio General")
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
     
-    def dashboard_uso_recursos(self, filters=None):
+    def dashboard_uso_recursos(self, filters=None, dashboard_id=36):
         data = self.db.get_uso_recursos()
         
         if not data:
@@ -594,11 +592,11 @@ class DashboardManager:
         fig.update_layout(height=500)
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": data
         }
     
-    def dashboard_placeholder(self, dashboard_info):
+    def dashboard_placeholder(self, dashboard_info, dashboard_id):
         """Método para dashboards no implementados"""
         fig = go.Figure()
         fig.add_annotation(
@@ -616,6 +614,6 @@ class DashboardManager:
         )
         
         return {
-            "chart": fig.to_html(include_plotlyjs=True, div_id="chart"),
+            "chart": fig.to_html(include_plotlyjs=True, div_id=f"chart-{dashboard_id}"),
             "data": {"message": "Dashboard en desarrollo"}
         }
